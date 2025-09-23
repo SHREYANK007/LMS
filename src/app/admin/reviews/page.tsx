@@ -268,7 +268,7 @@ export default function AdminReviewsPage() {
                       <div className="flex items-center space-x-3 mb-2">
                         <h4 className="font-semibold text-gray-800">{review.studentName}</h4>
                         {review.verified && (
-                          <CheckCircle2 className="w-4 h-4 text-blue-500" title="Verified Student" />
+                          <CheckCircle2 className="w-4 h-4 text-blue-500" />
                         )}
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(review.status)}`}>
                           {review.status}
