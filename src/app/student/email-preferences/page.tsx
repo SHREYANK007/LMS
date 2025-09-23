@@ -440,18 +440,18 @@ export default function StudentEmailPreferencesPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {[
-                    '{{studentName}}',
-                    '{{courseType}}',
-                    '{{sessionTitle}}',
-                    '{{sessionDate}}',
-                    '{{sessionTime}}',
-                    '{{tutorName}}',
-                    '{{amount}}',
-                    '{{currency}}',
-                    '{{transactionId}}',
-                    '{{loginUrl}}',
-                    '{{joinUrl}}',
-                    '{{description}}'
+                    '&#123;&#123;studentName&#125;&#125;',
+                    '&#123;&#123;courseType&#125;&#125;',
+                    '&#123;&#123;sessionTitle&#125;&#125;',
+                    '&#123;&#123;sessionDate&#125;&#125;',
+                    '&#123;&#123;sessionTime&#125;&#125;',
+                    '&#123;&#123;tutorName&#125;&#125;',
+                    '&#123;&#123;amount&#125;&#125;',
+                    '&#123;&#123;currency&#125;&#125;',
+                    '&#123;&#123;transactionId&#125;&#125;',
+                    '&#123;&#123;loginUrl&#125;&#125;',
+                    '&#123;&#123;joinUrl&#125;&#125;',
+                    '&#123;&#123;description&#125;&#125;'
                   ].map((variable) => (
                     <div key={variable} className="bg-gray-50 rounded-lg p-3 text-center">
                       <code className="text-sm text-gray-700 font-mono">{variable}</code>
