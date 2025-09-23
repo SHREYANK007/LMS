@@ -8,7 +8,7 @@ import {
   Clock,
   Plus,
   Settings,
-  Sync,
+  RefreshCw as Sync,
   ExternalLink,
   Check,
   AlertCircle,
