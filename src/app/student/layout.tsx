@@ -1,5 +1,7 @@
 import Sidebar from '@/components/common/Sidebar'
 
+export const dynamic = 'force-dynamic'
+
 export default function StudentLayout({
   children,
 }: {
