@@ -1,33 +1,25 @@
 {
-  "name": "scoresmart-lms",
-  "version": "0.1.0",
-  "private": true,
+  "name": "lms",
+  "version": "1.0.0",
+  "main": "index.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run start --workspace=backend"
   },
-  "dependencies": {
-    "@radix-ui/react-slot": "^1.2.3",
-    "@tailwindcss/forms": "^0.5.10",
-    "@tailwindcss/typography": "^0.5.18",
-    "autoprefixer": "^10.4.14",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.0.0",
-    "lucide-react": "^0.263.0",
-    "next": "^14.0.0",
-    "postcss": "^8.4.24",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "tailwindcss": "^3.3.0",
-    "typescript": "^5.0.0"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SHREYANK007/LMS.git"
   },
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0",
-    "eslint": "^8.0.0",
-    "eslint-config-next": "^14.0.0"
-  }
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "workspaces": [
+    "packages/frontend",
+    "packages/backend"
+  ],
+  "bugs": {
+    "url": "https://github.com/SHREYANK007/LMS/issues"
+  },
+  "homepage": "https://github.com/SHREYANK007/LMS#readme",
+  "description": ""
 }
