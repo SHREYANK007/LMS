@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Calendar, Clock, Users, Video, GraduationCap } from 'lucide-react'
+import api from '@/lib/api'
 
 interface CreateSessionModalProps {
   isOpen: boolean
@@ -21,7 +22,7 @@ export interface SessionFormData {
   startTime: string
   endTime: string
   sessionType: 'ONE_TO_ONE' | 'SMART_QUAD' | 'MASTERCLASS'
-  courseType: 'PTE' | 'IELTS' | 'TOEFL' | 'GENERAL_ENGLISH' | 'BUSINESS_ENGLISH' | 'ACADEMIC_WRITING'
+  courseType: 'PTE' | 'IELTS'
   maxParticipants?: number
 }
 
@@ -31,16 +32,123 @@ export default function CreateSessionModal({
   onSubmit,
   isLoading = false
 }: CreateSessionModalProps) {
+  // Helper function to get current time + 1 hour in datetime-local format
+  const getDefaultStartTime = () => {
+    const now = new Date()
+    now.setMinutes(0, 0, 0) // Round to nearest hour
+    now.setHours(now.getHours() + 1) // Add 1 hour
+    return now.toISOString().slice(0, 16)
+  }
+
+  const getDefaultEndTime = (startTime: string) => {
+    if (!startTime) return ''
+    const start = new Date(startTime)
+    start.setHours(start.getHours() + 1) // Add 1 hour
+    return start.toISOString().slice(0, 16)
+  }
+
+  // Initialize form data with defaults
+  const defaultStartTime = getDefaultStartTime()
   const [formData, setFormData] = useState<SessionFormData>({
     title: '',
     description: '',
-    startTime: '',
-    endTime: '',
+    startTime: defaultStartTime,
+    endTime: getDefaultEndTime(defaultStartTime),
     sessionType: 'ONE_TO_ONE',
     courseType: 'PTE'
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isCalendarConnected, setIsCalendarConnected] = useState(false)
+  const [isCheckingCalendar, setIsCheckingCalendar] = useState(true)
+
+  // Check Google Calendar connection status
+  useEffect(() => {
+    if (isOpen) {
+      checkCalendarConnection()
+    }
+  }, [isOpen])
+
+  const checkCalendarConnection = async () => {
+    setIsCheckingCalendar(true)
+    try {
+      console.log('Checking calendar connection, api:', api)
+
+      // Fallback to direct fetch if api is not available
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      const token = localStorage.getItem('token')
+
+      if (!token) {
+        console.error('No authentication token found')
+        return
+      }
+
+      const response = await fetch(`${apiUrl}/auth/google/status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('Calendar API response status:', response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Calendar connection data:', data)
+        setIsCalendarConnected(data.connected || false)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Calendar API error:', errorData)
+      }
+    } catch (error) {
+      console.error('Failed to check calendar connection:', error)
+    } finally {
+      setIsCheckingCalendar(false)
+    }
+  }
+
+  const handleConnectCalendar = async () => {
+    try {
+      console.log('Initiating calendar connection')
+
+      // Use direct fetch as fallback
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      const token = localStorage.getItem('token')
+
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      const response = await fetch(`${apiUrl}/auth/google/connect`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('Calendar connect API response status:', response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Calendar connect response data:', data)
+
+        if (data.success && data.authUrl) {
+          // Open the authorization URL in a new window
+          window.open(data.authUrl, '_blank', 'width=500,height=600')
+          alert('Please complete the Google Calendar authorization in the popup window and then try creating the session again.')
+        } else {
+          throw new Error('No authorization URL received')
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Calendar connect API error:', errorData)
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+    } catch (error) {
+      console.error('Failed to initiate calendar connection:', error)
+      alert(`Failed to connect Google Calendar: ${error.message}`)
+    }
+  }
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -83,7 +191,18 @@ export default function CreateSessionModal({
   }
 
   const handleInputChange = (field: keyof SessionFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value }
+
+      // Auto-update end time when start time changes
+      if (field === 'startTime' && value) {
+        const endTime = getDefaultEndTime(value)
+        newData.endTime = endTime
+      }
+
+      return newData
+    })
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
@@ -196,10 +315,6 @@ export default function CreateSessionModal({
                 <SelectContent>
                   <SelectItem value="PTE">PTE</SelectItem>
                   <SelectItem value="IELTS">IELTS</SelectItem>
-                  <SelectItem value="TOEFL">TOEFL</SelectItem>
-                  <SelectItem value="GENERAL_ENGLISH">General English</SelectItem>
-                  <SelectItem value="BUSINESS_ENGLISH">Business English</SelectItem>
-                  <SelectItem value="ACADEMIC_WRITING">Academic Writing</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -246,14 +361,45 @@ export default function CreateSessionModal({
                 {getMaxParticipants(formData.sessionType)} students
               </span>
             </div>
-            <div className="flex items-center justify-between text-sm mt-2">
-              <span className="text-gray-600">Google Meet Link:</span>
-              <span className="text-green-600">✓ Will be generated automatically</span>
-            </div>
-            <div className="flex items-center justify-between text-sm mt-2">
-              <span className="text-gray-600">Calendar Event:</span>
-              <span className="text-green-600">✓ Will be added to Google Calendar</span>
-            </div>
+
+            {isCheckingCalendar ? (
+              <div className="flex items-center justify-between text-sm mt-2">
+                <span className="text-gray-600">Calendar Connection:</span>
+                <span className="text-gray-500">Checking...</span>
+              </div>
+            ) : isCalendarConnected ? (
+              <>
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-gray-600">Google Meet Link:</span>
+                  <span className="text-green-600">✓ Will be generated automatically</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-gray-600">Calendar Event:</span>
+                  <span className="text-green-600">✓ Will be added to Google Calendar</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-gray-600">Google Calendar:</span>
+                  <span className="text-orange-600">Not connected</span>
+                </div>
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleConnectCalendar}
+                    className="w-full text-sm"
+                  >
+                    Connect Google Calendar for Meet Links
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Sessions can be created without Google Calendar, but won't have Meet links.
+                </p>
+              </>
+            )}
           </div>
 
           {/* Description */}

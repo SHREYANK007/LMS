@@ -1,15 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import SessionJoinModal from '../../../components/student/SessionJoinModal';
+import FeatureProtected from '../../../components/student/FeatureProtected';
 
 export default function StudentSmartQuadPage() {
+  const searchParams = useSearchParams();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedSession, setSelectedSession] = useState(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [filter, setFilter] = useState('all'); // all, today, this-week, by-course
+  const [sessionTypeFilter, setSessionTypeFilter] = useState(searchParams?.get('sessionType') || 'SMART_QUAD'); // Default to SMART_QUAD sessions
+  const [courseTypeFilter, setCourseTypeFilter] = useState(searchParams?.get('courseType') || 'all'); // all, PTE, IELTS, etc.
 
   useEffect(() => {
     fetchSessions();
@@ -18,19 +23,35 @@ export default function StudentSmartQuadPage() {
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const token = localStorage.getItem('token');
 
-      const response = await fetch(`${apiUrl}/smart-quad/available`, {
+      // Fetch all upcoming sessions (not just smart-quad specific)
+      const response = await fetch(`${apiUrl}/sessions?upcoming=true`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
+      console.log('API Response Status:', response.status);
+      console.log('API URL:', `${apiUrl}/sessions?upcoming=true`);
+      console.log('Token:', token ? 'Present' : 'Missing');
+
       if (response.ok) {
         const data = await response.json();
-        setSessions(data.sessions || []);
+        // Filter to only show sessions that have available spots and calculate available spots
+        const availableSessions = (data.sessions || [])
+          .filter(session => session.currentParticipants < session.maxParticipants)
+          .map(session => ({
+            ...session,
+            availableSpots: session.maxParticipants - session.currentParticipants,
+            tutor: {
+              name: session.tutor?.email || session.tutor?.name || 'Unknown Tutor',
+              email: session.tutor?.email || 'unknown@email.com'
+            }
+          }));
+        setSessions(availableSessions);
       } else {
         setError('Failed to load available sessions');
       }
@@ -120,14 +141,26 @@ export default function StudentSmartQuadPage() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+    // Time filter
+    let timeMatch = true;
     switch (filter) {
       case 'today':
-        return sessionDate >= today && sessionDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        timeMatch = sessionDate >= today && sessionDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        break;
       case 'this-week':
-        return sessionDate >= today && sessionDate < nextWeek;
+        timeMatch = sessionDate >= today && sessionDate < nextWeek;
+        break;
       default:
-        return true;
+        timeMatch = true;
     }
+
+    // Session type filter
+    const sessionTypeMatch = sessionTypeFilter === 'all' || session.sessionType === sessionTypeFilter;
+
+    // Course type filter
+    const courseTypeMatch = courseTypeFilter === 'all' || session.courseType === courseTypeFilter;
+
+    return timeMatch && sessionTypeMatch && courseTypeMatch;
   });
 
   const courseTypes = [...new Set(sessions.map(s => s.courseType))];
@@ -148,46 +181,82 @@ export default function StudentSmartQuadPage() {
   }
 
   return (
-    <div className="p-6">
+    <FeatureProtected featureKey="smart_quad" featureName="Smart Quad Sessions">
+      <div className="p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Smart Quad Sessions</h1>
-        <p className="text-gray-600 mt-2">Join small group learning sessions with expert tutors</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Smart Quad Sessions</h1>
+            <p className="text-gray-600 mt-2">Join small group learning sessions (max 4 students) with expert tutors</p>
+          </div>
+          <div className="hidden md:flex items-center space-x-4 text-sm text-gray-500">
+            <div className="flex items-center">
+              <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+              Available
+            </div>
+            <div className="flex items-center">
+              <span className="w-3 h-3 bg-orange-500 rounded-full mr-2"></span>
+              Almost Full
+            </div>
+            <div className="flex items-center">
+              <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+              Full
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Filter Controls */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        {[
-          { key: 'all', label: 'All Sessions' },
-          { key: 'today', label: 'Today' },
-          { key: 'this-week', label: 'This Week' }
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              filter === key
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Enhanced Filter Controls */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="flex items-center mb-4">
+          <span className="text-lg font-semibold text-gray-900 mr-2">🔍</span>
+          <h2 className="text-lg font-semibold text-gray-900">Filter Sessions</h2>
+        </div>
+        <div className="space-y-4">
+        {/* Time Filters */}
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm font-medium text-gray-700 mr-2">Time:</span>
+          {[
+            { key: 'all', label: 'All Sessions' },
+            { key: 'today', label: 'Today' },
+            { key: 'this-week', label: 'This Week' }
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                filter === key
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {/* Course Type Filters */}
-        {courseTypes.map(courseType => (
-          <button
-            key={courseType}
-            onClick={() => setFilter(courseType)}
-            className={`px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
-              filter === courseType
-                ? getCourseTypeColor(courseType)
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            {courseType}
-          </button>
-        ))}
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm font-medium text-gray-700 mr-2">Course:</span>
+          {[
+            { key: 'all', label: 'All Courses' },
+            { key: 'PTE', label: 'PTE' },
+            { key: 'NAATI', label: 'NAATI' }
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setCourseTypeFilter(key)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                courseTypeFilter === key
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        </div>
       </div>
 
       {error && (
@@ -202,9 +271,9 @@ export default function StudentSmartQuadPage() {
           <div className="text-gray-400 text-6xl mb-4">📚</div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No sessions available</h3>
           <p className="text-gray-600">
-            {filter === 'all'
-              ? 'There are no Smart Quad sessions available at the moment.'
-              : `No sessions found for ${filter === 'today' ? 'today' : filter === 'this-week' ? 'this week' : filter}.`
+            {filter === 'all' && sessionTypeFilter === 'all' && courseTypeFilter === 'all'
+              ? 'There are no available sessions at the moment.'
+              : 'No sessions match your current filters. Try adjusting your filters or check back later.'
             }
           </p>
         </div>
@@ -227,6 +296,9 @@ export default function StudentSmartQuadPage() {
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">{session.title}</h3>
                         <div className="flex items-center gap-3 mb-2">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${session.sessionType === 'ONE_TO_ONE' ? 'bg-blue-100 text-blue-800' : session.sessionType === 'SMART_QUAD' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}`}>
+                            {session.sessionType === 'ONE_TO_ONE' ? 'One-to-One' : session.sessionType === 'SMART_QUAD' ? 'Smart Quad' : 'Masterclass'}
+                          </span>
                           <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getCourseTypeColor(session.courseType)}`}>
                             {session.courseType}
                           </span>
@@ -263,7 +335,7 @@ export default function StudentSmartQuadPage() {
                       <div className="flex items-center text-gray-600">
                         <span className="mr-2">👨‍🏫</span>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{session.tutor.name}</p>
+                          <p className="text-sm font-medium text-gray-900">{session.tutor?.name || session.tutor?.email || 'Unknown Tutor'}</p>
                           <p className="text-xs text-gray-500">Tutor</p>
                         </div>
                       </div>
@@ -352,5 +424,6 @@ export default function StudentSmartQuadPage() {
         />
       )}
     </div>
+    </FeatureProtected>
   );
 }

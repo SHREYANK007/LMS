@@ -10,9 +10,11 @@ export default function TutorSidebar() {
 
   const menuItems = [
     { href: '/tutor', label: 'Dashboard', icon: '📊' },
+    { href: '/tutor/sessions', label: 'One-to-One', icon: '📖' },
     { href: '/tutor/schedule', label: 'Schedule', icon: '📅' },
     { href: '/tutor/smart-quad', label: 'Smart Quad', icon: '👥' },
     { href: '/tutor/materials', label: 'Materials', icon: '📚' },
+    { href: '/tutor/support', label: 'Support', icon: '🎧' },
     { href: '/tutor/profile', label: 'Profile', icon: '👤' },
     { href: '/tutor/availability', label: 'Availability', icon: '🕐' },
   ];

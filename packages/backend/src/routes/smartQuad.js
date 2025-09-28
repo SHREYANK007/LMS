@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireFeature } = require('../controllers/studentController');
+const { filterStudentContent } = require('../middleware/studentAccess');
 const {
   createSmartQuadSession,
   getTutorSmartQuadSessions,
@@ -19,7 +21,7 @@ router.put('/:sessionId', authorize('TUTOR'), updateSmartQuadSession);
 router.delete('/:sessionId', authorize('TUTOR'), deleteSmartQuadSession);
 
 // Routes for students to view available Smart Quad sessions
-router.get('/available', authorize('STUDENT'), getAvailableSmartQuadSessions);
+router.get('/available', authorize('STUDENT'), requireFeature('smart_quad'), filterStudentContent, getAvailableSmartQuadSessions);
 
 // Routes for admins to view all Smart Quad sessions
 router.get('/all', authorize('ADMIN'), async (req, res) => {

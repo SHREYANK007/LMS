@@ -7,8 +7,10 @@ export default function StudentLayout({ children }) {
   return (
     <ProtectedRoute allowedRoles={['STUDENT']}>
       <div className="min-h-screen flex">
-        <StudentSidebar />
-        <main className="flex-1 bg-gray-50">{children}</main>
+        <div className="fixed inset-y-0 left-0 z-10">
+          <StudentSidebar />
+        </div>
+        <main className="flex-1 bg-gray-50 ml-64 overflow-y-auto">{children}</main>
       </div>
     </ProtectedRoute>
   );

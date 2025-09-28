@@ -10,9 +10,24 @@ export default function TutorSchedulePage() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [filter, setFilter] = useState('all'); // all, today, upcoming, past
+  const [sessionTypeFilter, setSessionTypeFilter] = useState('all'); // all, ONE_TO_ONE, SMART_QUAD, MASTERCLASS
+  const [courseTypeFilter, setCourseTypeFilter] = useState('all'); // all, PTE, IELTS, etc.
 
   useEffect(() => {
     fetchSessions();
+  }, []);
+
+  // Re-fetch sessions when the page becomes visible (helpful after creating sessions)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page became visible, refreshing sessions...');
+        fetchSessions();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const fetchSessions = async () => {
@@ -21,17 +36,29 @@ export default function TutorSchedulePage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
-      const response = await fetch(`${apiUrl}/smart-quad/tutor/sessions`, {
+      console.log('Fetching sessions for tutor');
+
+      // Backend now automatically filters sessions by tutor
+      const url = `${apiUrl}/sessions`;
+
+      console.log('Sessions API URL (showing ALL sessions for debugging):', url);
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
+      console.log('Sessions API response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Sessions API response data:', data);
         setSessions(data.sessions || []);
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Sessions API error:', errorData);
         setError('Failed to load sessions');
       }
     } catch (err) {
@@ -108,16 +135,29 @@ export default function TutorSchedulePage() {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+    // Time filter
+    let timeMatch = true;
     switch (filter) {
       case 'today':
-        return sessionDate >= today && sessionDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        timeMatch = sessionDate >= today && sessionDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        break;
       case 'upcoming':
-        return sessionDate >= now;
+        timeMatch = sessionDate >= now;
+        break;
       case 'past':
-        return sessionDate < now;
+        timeMatch = sessionDate < now;
+        break;
       default:
-        return true;
+        timeMatch = true;
     }
+
+    // Session type filter
+    const sessionTypeMatch = sessionTypeFilter === 'all' || session.sessionType === sessionTypeFilter;
+
+    // Course type filter
+    const courseTypeMatch = courseTypeFilter === 'all' || session.courseType === courseTypeFilter;
+
+    return timeMatch && sessionTypeMatch && courseTypeMatch;
   });
 
   const getSessionStats = () => {
@@ -169,55 +209,151 @@ export default function TutorSchedulePage() {
 
   return (
     <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">My Schedule</h1>
-        <p className="text-gray-600 mt-2">Manage your teaching schedule and upcoming sessions</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Schedule</h1>
+          <p className="text-gray-600 mt-2">Manage your teaching schedule and upcoming sessions</p>
+        </div>
+        <button
+          onClick={() => {
+            console.log('Manual refresh triggered');
+            fetchSessions();
+          }}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+          disabled={loading}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards with improved clarity */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Today's Sessions</h3>
-          <p className="text-3xl font-bold text-blue-600">{stats.today}</p>
-          <p className="text-gray-500 text-sm">Scheduled sessions</p>
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-blue-900">Today's Sessions</h3>
+            <span className="text-2xl">📅</span>
+          </div>
+          <p className="text-3xl font-bold text-blue-700 mb-1">{stats.today}</p>
+          <p className="text-blue-600 text-sm font-medium">Scheduled for today</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">This Week</h3>
-          <p className="text-3xl font-bold text-green-600">{stats.week}</p>
-          <p className="text-gray-500 text-sm">Total sessions</p>
+        <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-green-900">This Week</h3>
+            <span className="text-2xl">🗓️</span>
+          </div>
+          <p className="text-3xl font-bold text-green-700 mb-1">{stats.week}</p>
+          <p className="text-green-600 text-sm font-medium">Sessions this week</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Active Students</h3>
-          <p className="text-3xl font-bold text-purple-600">{stats.participants}</p>
-          <p className="text-gray-500 text-sm">Enrolled students</p>
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-purple-900">Active Students</h3>
+            <span className="text-2xl">👥</span>
+          </div>
+          <p className="text-3xl font-bold text-purple-700 mb-1">{stats.participants}</p>
+          <p className="text-purple-600 text-sm font-medium">Enrolled students</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Sessions</h3>
-          <p className="text-3xl font-bold text-indigo-600">{stats.total}</p>
-          <p className="text-gray-500 text-sm">All time</p>
+        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-indigo-900">Total Sessions</h3>
+            <span className="text-2xl">📊</span>
+          </div>
+          <p className="text-3xl font-bold text-indigo-700 mb-1">{stats.total}</p>
+          <p className="text-indigo-600 text-sm font-medium">All time sessions</p>
         </div>
       </div>
+
+      {/* Session Type Notice */}
+      {sessionTypeFilter === 'ONE_TO_ONE' && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="text-purple-600 text-lg">ℹ️</div>
+            <div>
+              <h3 className="text-purple-800 font-semibold mb-1">About One-to-One Sessions</h3>
+              <p className="text-purple-700 text-sm">
+                One-to-one sessions are managed separately from your schedule. These sessions are assigned to you by administrators when students request them.
+                <a href="/tutor/sessions" className="underline hover:no-underline ml-1">View your assigned one-to-one sessions here</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter Controls */}
-      <div className="flex space-x-4 mb-6">
-        {[
-          { key: 'all', label: 'All Sessions' },
-          { key: 'today', label: 'Today' },
-          { key: 'upcoming', label: 'Upcoming' },
-          { key: 'past', label: 'Past' }
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              filter === key
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="space-y-4 mb-6">
+        {/* Time Filters */}
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm font-medium text-gray-700 mr-2">Time:</span>
+          {[
+            { key: 'all', label: 'All Sessions' },
+            { key: 'today', label: 'Today' },
+            { key: 'upcoming', label: 'Upcoming' },
+            { key: 'past', label: 'Past' }
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                filter === key
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Session Type Filters */}
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm font-medium text-gray-700 mr-2">Session Type:</span>
+          {[
+            { key: 'all', label: 'All Types' },
+            { key: 'ONE_TO_ONE', label: 'One-to-One' },
+            { key: 'SMART_QUAD', label: 'Smart Quad' },
+            { key: 'MASTERCLASS', label: 'Masterclass' }
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSessionTypeFilter(key)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                sessionTypeFilter === key
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Course Type Filters */}
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm font-medium text-gray-700 mr-2">Course Type:</span>
+          {[
+            { key: 'all', label: 'All Courses' },
+            { key: 'PTE', label: 'PTE' },
+            { key: 'IELTS', label: 'IELTS' },
+            { key: 'TOEFL', label: 'TOEFL' },
+            { key: 'GENERAL_ENGLISH', label: 'General English' },
+            { key: 'BUSINESS_ENGLISH', label: 'Business English' },
+            { key: 'ACADEMIC_WRITING', label: 'Academic Writing' }
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setCourseTypeFilter(key)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                courseTypeFilter === key
+                  ? 'bg-purple-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && (
@@ -229,21 +365,60 @@ export default function TutorSchedulePage() {
       {/* Sessions List */}
       {filteredSessions.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-gray-400 text-6xl mb-4">📅</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No sessions found</h3>
-          <p className="text-gray-600 mb-6">
-            {filter === 'all'
-              ? 'You haven\'t created any Smart Quad sessions yet.'
-              : `No sessions found for ${filter === 'today' ? 'today' : filter} sessions.`
-            }
-          </p>
-          <a
-            href="/tutor/smart-quad"
-            className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 inline-flex items-center"
-          >
-            <span className="mr-2">+</span>
-            Create Smart Quad Session
-          </a>
+          <div className="text-gray-400 text-6xl mb-4">
+            {sessionTypeFilter === 'ONE_TO_ONE' ? '📖' : '📅'}
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {sessionTypeFilter === 'ONE_TO_ONE' ? 'One-to-One Sessions' : 'No sessions found'}
+          </h3>
+
+          {sessionTypeFilter === 'ONE_TO_ONE' ? (
+            <div>
+              <p className="text-gray-600 mb-6">
+                One-to-one sessions are managed separately from your schedule. These sessions are assigned to you by administrators when students request them.
+              </p>
+              <a
+                href="/tutor/sessions"
+                className="bg-purple-500 text-white px-6 py-2 rounded-md hover:bg-purple-600 inline-flex items-center"
+              >
+                <span className="mr-2">📖</span>
+                View One-to-One Sessions
+              </a>
+            </div>
+          ) : (
+            <div>
+              <p className="text-gray-600 mb-6">
+                {sessionTypeFilter === 'all'
+                  ? 'You haven\'t created any sessions yet.'
+                  : sessionTypeFilter === 'SMART_QUAD'
+                  ? 'You haven\'t created any Smart Quad sessions yet.'
+                  : sessionTypeFilter === 'MASTERCLASS'
+                  ? 'You haven\'t created any Masterclass sessions yet.'
+                  : `No sessions found for ${filter === 'today' ? 'today' : filter} sessions.`
+                }
+              </p>
+              {sessionTypeFilter !== 'ONE_TO_ONE' && (
+                <div className="flex gap-3 justify-center">
+                  <a
+                    href="/tutor/smart-quad"
+                    className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 inline-flex items-center"
+                  >
+                    <span className="mr-2">+</span>
+                    Create Smart Quad Session
+                  </a>
+                  {sessionTypeFilter === 'all' && (
+                    <a
+                      href="/tutor/sessions"
+                      className="bg-purple-500 text-white px-6 py-2 rounded-md hover:bg-purple-600 inline-flex items-center"
+                    >
+                      <span className="mr-2">📖</span>
+                      View One-to-One Sessions
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid gap-4">
@@ -254,66 +429,118 @@ export default function TutorSchedulePage() {
             return (
               <div
                 key={session.id}
-                onClick={() => handleSessionClick(session)}
-                className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-all cursor-pointer hover:bg-gray-50"
+                className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all hover:border-blue-200"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{session.title}</h3>
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    {/* Header */}
+                    <div className="flex flex-wrap items-center gap-3 mb-3">
+                      <h3 className="text-xl font-semibold text-gray-900">{session.title}</h3>
                       {getStatusBadge(session.status)}
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${getCourseTypeColor(session.courseType)}`}>
-                        {session.courseType}
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${session.sessionType === 'ONE_TO_ONE' ? 'bg-blue-100 text-blue-800 border border-blue-200' : session.sessionType === 'SMART_QUAD' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-purple-100 text-purple-800 border border-purple-200'}`}>
+                        {session.sessionType === 'ONE_TO_ONE' ? '1:1 Session' : session.sessionType === 'SMART_QUAD' ? 'Smart Quad' : 'Masterclass'}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getCourseTypeColor(session.courseType)}`}>
+                        {session.courseType.replace('_', ' ')}
                       </span>
                     </div>
 
-                    <p className="text-gray-600 text-sm mb-3">{session.description}</p>
+                    {/* Description */}
+                    <p className="text-gray-600 mb-4 line-clamp-2">{session.description || 'No description provided'}</p>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center text-gray-500">
-                        <span className="mr-2">📅</span>
-                        <span>{date}</span>
+                    {/* Session Details */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                      <div className="flex items-center text-gray-600">
+                        <span className="mr-2 text-lg">📅</span>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{date}</p>
+                          <p className="text-xs text-gray-500">Session Date</p>
+                        </div>
                       </div>
-                      <div className="flex items-center text-gray-500">
-                        <span className="mr-2">⏰</span>
-                        <span>{time}</span>
+                      <div className="flex items-center text-gray-600">
+                        <span className="mr-2 text-lg">⏰</span>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{time}</p>
+                          <p className="text-xs text-gray-500">{duration} duration</p>
+                        </div>
                       </div>
-                      <div className="flex items-center text-gray-500">
-                        <span className="mr-2">⏱️</span>
-                        <span>{duration}</span>
+                      <div className="flex items-center text-gray-600">
+                        <span className="mr-2 text-lg">👥</span>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {session.currentParticipants}/{session.maxParticipants}
+                          </p>
+                          <p className="text-xs text-gray-500">Participants</p>
+                        </div>
                       </div>
-                      <div className="flex items-center text-gray-500">
-                        <span className="mr-2">👥</span>
-                        <span>{session.currentParticipants}/{session.maxParticipants}</span>
+                      <div className="flex items-center text-gray-600">
+                        <span className="mr-2 text-lg">💺</span>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {session.maxParticipants - session.currentParticipants}
+                          </p>
+                          <p className="text-xs text-gray-500">Available spots</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mb-3">
+                      <div className="flex justify-between text-sm text-gray-500 mb-1">
+                        <span>Session capacity</span>
+                        <span>{Math.round((session.currentParticipants / session.maxParticipants) * 100)}% filled</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            (session.maxParticipants - session.currentParticipants) <= 1 ? 'bg-red-500' :
+                            (session.maxParticipants - session.currentParticipants) <= 2 ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${(session.currentParticipants / session.maxParticipants) * 100}%` }}
+                        ></div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 ml-4">
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-3 lg:min-w-[200px] shrink-0">
+                    <button
+                      onClick={() => handleSessionClick(session)}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                    >
+                      ✏️ Edit Session
+                    </button>
+
                     {session.meetLink && (
                       <a
                         href={session.meetLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-green-500 hover:text-green-600 text-sm flex items-center gap-1 px-3 py-2 border border-green-200 rounded-md hover:bg-green-50"
+                        className="px-4 py-2 text-center bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
                       >
-                        <span>📹</span>
-                        Join Meet
+                        📹 Join Meet
                       </a>
                     )}
+
                     {session.calendarEventUrl && (
                       <a
                         href={session.calendarEventUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-blue-500 hover:text-blue-600 text-sm flex items-center gap-1 px-3 py-2 border border-blue-200 rounded-md hover:bg-blue-50"
+                        className="px-4 py-2 text-center bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors font-medium"
                       >
-                        <span>📅</span>
-                        Calendar
+                        📅 View Calendar
                       </a>
                     )}
+
+                    <div className="text-center text-xs text-gray-500">
+                      {(session.maxParticipants - session.currentParticipants) <= 2 && (session.maxParticipants - session.currentParticipants) > 0 && (
+                        <span className="text-orange-600 font-medium">⚠️ Almost full!</span>
+                      )}
+                      {(session.maxParticipants - session.currentParticipants) === 0 && (
+                        <span className="text-red-600 font-medium">🔴 Session Full</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

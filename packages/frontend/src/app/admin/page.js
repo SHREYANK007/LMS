@@ -8,12 +8,19 @@ export default function AdminDashboard() {
 
   const cards = [
     {
-      title: 'User Management',
-      description: 'Create new student & tutor accounts, manage existing users',
-      href: '/admin/users',
-      icon: '👥',
+      title: 'Students',
+      description: 'Manage student accounts and feature access',
+      href: '/admin/students',
+      icon: '🎓',
       color: 'bg-blue-500',
       highlight: true,
+    },
+    {
+      title: 'Tutors',
+      description: 'Manage tutor accounts and availability',
+      href: '/admin/tutors',
+      icon: '👨‍🏫',
+      color: 'bg-indigo-500',
     },
     {
       title: 'Sessions',
@@ -45,7 +52,7 @@ export default function AdminDashboard() {
         <p className="text-gray-600 mt-2">Welcome back, {user?.email}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cards.map((card) => (
           <Link
             key={card.href}

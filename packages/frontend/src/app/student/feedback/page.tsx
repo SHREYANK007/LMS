@@ -1,78 +1,225 @@
 'use client'
 
-import { useState } from 'react'
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   MessageSquare,
   Plus,
-  Search,
-  Filter,
   Clock,
   CheckCircle2,
   AlertCircle,
-  User,
   Paperclip,
   Send,
   Eye,
   MoreHorizontal,
-  Star,
-  ThumbsUp,
   MessageCircle,
-  Zap,
   ChevronRight,
   RefreshCw,
   Mic,
   FileText,
-  Image,
   X
 } from 'lucide-react'
-import { mockFeedback, getFeedbackByStudent } from '@/data/mock/mockCommunication'
-import { mockTutorInfo } from '@/data/mock/mockReviews'
+import { useAuth } from '@/contexts/AuthContext'
+import api from '@/lib/api'
+
+type TicketStatus = 'open' | 'in_progress' | 'waiting_for_response' | 'resolved' | 'closed'
+type FilterStatus = 'all' | TicketStatus
+type TicketPriority = 'low' | 'medium' | 'high' | 'urgent'
+
+interface TutorSummary {
+  id: string
+  name?: string | null
+  email?: string | null
+}
+
+interface SupportTicket {
+  id: string
+  title: string
+  description: string
+  status: TicketStatus
+  priority: TicketPriority
+  category: 'technical' | 'academic' | 'billing' | 'general' | 'feedback'
+  ticketNumber: string
+  createdAt: string
+  updatedAt: string
+  tags?: string[] | null
+  assignedTutor?: TutorSummary | null
+}
+
+interface NewTicketState {
+  tutorId: string
+  doubtType: string
+  subject: string
+  message: string
+  priority: 'low' | 'medium' | 'high'
+  attachments: File[]
+  voiceNote: File | null
+}
+
+interface NotificationState {
+  type: 'success' | 'error'
+  message: string
+}
+
+interface DoubtType {
+  id: string
+  name: string
+  description: string
+  category: 'technical' | 'academic' | 'billing' | 'general' | 'feedback'
+}
+
+const initialNewTicketState: NewTicketState = {
+  tutorId: '',
+  doubtType: '',
+  subject: '',
+  message: '',
+  priority: 'medium',
+  attachments: [],
+  voiceNote: null
+}
+
+const pteDoubtTypes: DoubtType[] = [
+  { id: 'speaking', name: 'Speaking', description: 'Pronunciation, fluency, oral fluency', category: 'academic' },
+  { id: 'writing', name: 'Writing', description: 'Essay writing, summarize written text', category: 'academic' },
+  { id: 'reading', name: 'Reading', description: 'Reading comprehension, fill in blanks', category: 'academic' },
+  { id: 'listening', name: 'Listening', description: 'Audio comprehension, note taking', category: 'academic' },
+  { id: 'vocabulary', name: 'Vocabulary', description: 'Word usage, academic vocabulary', category: 'academic' },
+  { id: 'grammar', name: 'Grammar', description: 'Sentence structure, tenses', category: 'academic' },
+  { id: 'mock-test', name: 'Mock Test', description: 'Practice test questions and scoring', category: 'academic' },
+  { id: 'strategy', name: 'Test Strategy', description: 'Time management, exam techniques', category: 'academic' },
+  { id: 'scoring', name: 'Scoring', description: 'Understanding PTE scoring system', category: 'academic' },
+  { id: 'technical', name: 'Technical Issues', description: 'Platform or technical problems', category: 'technical' },
+  { id: 'billing', name: 'Billing & Payments', description: 'Invoices, payments, or refund queries', category: 'billing' },
+  { id: 'feedback', name: 'Feedback & Suggestions', description: 'Share ideas to improve the program', category: 'feedback' },
+  { id: 'general', name: 'General Query', description: 'Other questions or concerns', category: 'general' }
+]
+
+const formatDate = (value: string | Date) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+
+  return date.toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  })
+}
+
+const formatStatusLabel = (status: TicketStatus) =>
+  status
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 
 export default function StudentSupportPage() {
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
+
   const [activeTab, setActiveTab] = useState<'my-tickets' | 'submit'>('my-tickets')
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'closed'>('all')
-  const [newTicket, setNewTicket] = useState({
-    tutorId: '',
-    doubtType: '',
-    subject: '',
-    message: '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
-    attachments: [] as File[],
-    voiceNote: null as File | null
-  })
-
-  // PTE Doubt Types
-  const pteDoubtTypes = [
-    { id: 'speaking', name: 'Speaking', description: 'Pronunciation, fluency, oral fluency' },
-    { id: 'writing', name: 'Writing', description: 'Essay writing, summarize written text' },
-    { id: 'reading', name: 'Reading', description: 'Reading comprehension, fill in blanks' },
-    { id: 'listening', name: 'Listening', description: 'Audio comprehension, note taking' },
-    { id: 'vocabulary', name: 'Vocabulary', description: 'Word usage, academic vocabulary' },
-    { id: 'grammar', name: 'Grammar', description: 'Sentence structure, tenses' },
-    { id: 'mock-test', name: 'Mock Test', description: 'Practice test questions and scoring' },
-    { id: 'strategy', name: 'Test Strategy', description: 'Time management, exam techniques' },
-    { id: 'scoring', name: 'Scoring', description: 'Understanding PTE scoring system' },
-    { id: 'technical', name: 'Technical Issues', description: 'Platform or technical problems' },
-    { id: 'general', name: 'General Query', description: 'Other questions or concerns' }
-  ]
+  const [selectedStatus, setSelectedStatus] = useState<FilterStatus>('all')
+  const [tickets, setTickets] = useState<SupportTicket[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [notification, setNotification] = useState<NotificationState | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [assignedTutors, setAssignedTutors] = useState<TutorSummary[]>([])
+  const [newTicket, setNewTicket] = useState<NewTicketState>(initialNewTicketState)
 
-  // Mock current student ID
-  const currentStudentId = 'student1'
+  const loadAssignedTutors = useCallback(async () => {
+    try {
+      const response = await api.fetchUserProfile()
+      if (response.success && Array.isArray(response.user?.assignedTutors)) {
+        setAssignedTutors(response.user.assignedTutors as TutorSummary[])
+      }
+    } catch (profileError) {
+      console.error('Error fetching assigned tutors:', profileError)
+    }
+  }, [])
 
-  // Get feedback for current student
-  const studentTickets = getFeedbackByStudent(currentStudentId)
+  const fetchTickets = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await api.getSupportTickets({ limit: 100, sortBy: 'createdAt', sortOrder: 'DESC' })
+      if (response.success) {
+        const apiTickets = (response.tickets || []) as SupportTicket[]
+        const sortedTickets = [...apiTickets].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        setTickets(sortedTickets)
+      } else {
+        setError(response.error || 'Failed to load support tickets')
+      }
+    } catch (fetchError) {
+      const message = fetchError instanceof Error ? fetchError.message : 'Failed to load support tickets'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  // Filter by status
-  const filteredTickets = selectedStatus === 'all'
-    ? studentTickets
-    : studentTickets.filter(ticket => ticket.status === selectedStatus)
+  useEffect(() => {
+    if (authLoading) {
+      return
+    }
 
-  const getStatusIcon = (status: string) => {
+    if (!user || user.role !== 'STUDENT') {
+      return
+    }
+
+    if (Array.isArray((user as any).assignedTutors)) {
+      setAssignedTutors((user as any).assignedTutors)
+    } else {
+      loadAssignedTutors()
+    }
+
+    fetchTickets()
+  }, [authLoading, user, loadAssignedTutors, fetchTickets])
+
+  useEffect(() => {
+    if (assignedTutors.length > 0 && !newTicket.tutorId) {
+      setNewTicket(prev => ({ ...prev, tutorId: assignedTutors[0].id }))
+    }
+  }, [assignedTutors, newTicket.tutorId])
+
+  useEffect(() => {
+    if (activeTab === 'submit') {
+      setFormError(null)
+    }
+  }, [activeTab])
+
+  const filteredTickets = useMemo(() => {
+    if (selectedStatus === 'all') {
+      return tickets
+    }
+    return tickets.filter(ticket => ticket.status === selectedStatus)
+  }, [tickets, selectedStatus])
+
+  const stats = useMemo(() => {
+    const total = tickets.length
+    const open = tickets.filter(t => t.status === 'open' || t.status === 'waiting_for_response').length
+    const inProgress = tickets.filter(t => t.status === 'in_progress').length
+    const resolved = tickets.filter(t => t.status === 'resolved').length
+
+    return {
+      total,
+      open,
+      inProgress,
+      resolved
+    }
+  }, [tickets])
+
+  const getStatusIcon = (status: TicketStatus) => {
     switch (status) {
       case 'open':
         return <AlertCircle className="w-4 h-4 text-blue-600" />
+      case 'waiting_for_response':
+        return <Clock className="w-4 h-4 text-purple-600" />
       case 'in_progress':
         return <Clock className="w-4 h-4 text-yellow-600" />
       case 'resolved':
@@ -84,10 +231,12 @@ export default function StudentSupportPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: TicketStatus) => {
     switch (status) {
       case 'open':
         return 'bg-blue-100 text-blue-800'
+      case 'waiting_for_response':
+        return 'bg-purple-100 text-purple-800'
       case 'in_progress':
         return 'bg-yellow-100 text-yellow-800'
       case 'resolved':
@@ -99,15 +248,11 @@ export default function StudentSupportPage() {
     }
   }
 
-  const stats = {
-    total: studentTickets.length,
-    open: studentTickets.filter(t => t.status === 'open').length,
-    inProgress: studentTickets.filter(t => t.status === 'in_progress').length,
-    resolved: studentTickets.filter(t => t.status === 'resolved').length
-  }
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || [])
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? [])
+    if (files.length === 0) {
+      return
+    }
     setNewTicket(prev => ({
       ...prev,
       attachments: [...prev.attachments, ...files]
@@ -122,54 +267,101 @@ export default function StudentSupportPage() {
   }
 
   const handleVoiceRecord = () => {
-    if (isRecording) {
-      // Stop recording logic would go here
-      setIsRecording(false)
-      console.log('Stopped recording')
-    } else {
-      // Start recording logic would go here
-      setIsRecording(true)
-      console.log('Started recording')
-    }
+    setIsRecording(prev => !prev)
   }
 
-  const handleSubmitTicket = () => {
-    if (!newTicket.tutorId || !newTicket.doubtType || !newTicket.subject.trim() || !newTicket.message.trim()) {
-      alert('Please fill in all required fields (Tutor, Doubt Type, Subject, and Message)')
+  const handleSubmitTicket = async () => {
+    if (isSubmitting) {
       return
     }
 
-    // Create new ticket object
-    const ticketData = {
-      id: Date.now().toString(),
-      studentId: currentStudentId,
-      tutorId: newTicket.tutorId,
-      doubtType: newTicket.doubtType,
-      subject: newTicket.subject,
-      message: newTicket.message,
-      priority: newTicket.priority,
-      status: 'open',
-      createdAt: new Date(),
-      attachments: newTicket.attachments.map(file => file.name),
-      hasVoiceNote: newTicket.voiceNote !== null
+    setFormError(null)
+
+    if (!assignedTutors.length) {
+      setFormError('We could not find an assigned tutor. Please contact support for assistance.')
+      return
     }
 
-    console.log('Submitting ticket:', ticketData)
+    if (!newTicket.tutorId) {
+      setFormError('Please select the tutor you would like to reach out to.')
+      return
+    }
 
-    // Reset form
-    setNewTicket({
-      tutorId: '',
-      doubtType: '',
-      subject: '',
-      message: '',
-      priority: 'medium',
-      attachments: [],
-      voiceNote: null
-    })
+    if (!newTicket.doubtType) {
+      setFormError('Please choose a doubt type so we can route your ticket correctly.')
+      return
+    }
 
-    // Show success message and switch to tickets view
-    alert('Support ticket submitted successfully! Your tutor will respond within 24 hours.')
-    setActiveTab('my-tickets')
+    if (!newTicket.subject.trim() || !newTicket.message.trim()) {
+      setFormError('Subject and message are required.')
+      return
+    }
+
+    const selectedDoubtType = pteDoubtTypes.find(type => type.id === newTicket.doubtType)
+    const category = selectedDoubtType?.category ?? 'general'
+    const tags = selectedDoubtType ? [selectedDoubtType.id] : []
+    const selectedTutorId = newTicket.tutorId
+
+    setIsSubmitting(true)
+
+    try {
+      const response = await api.createSupportTicket({
+        title: newTicket.subject.trim(),
+        description: newTicket.message.trim(),
+        category,
+        priority: newTicket.priority,
+        tags,
+        assignedTutorId: selectedTutorId
+      })
+
+      if (response.success) {
+        const ticketNumber = response.ticket?.ticketNumber
+        setNotification({
+          type: 'success',
+          message: ticketNumber
+            ? `Support ticket #${ticketNumber} submitted successfully.`
+            : 'Support ticket submitted successfully.'
+        })
+        setActiveTab('my-tickets')
+        setSelectedStatus('all')
+        setIsRecording(false)
+        setNewTicket({
+          ...initialNewTicketState,
+          tutorId: selectedTutorId
+        })
+        await fetchTickets()
+      } else {
+        setFormError(response.error || 'Failed to submit support ticket')
+      }
+    } catch (submissionError) {
+      const message = submissionError instanceof Error
+        ? submissionError.message
+        : 'Failed to submit support ticket'
+      setFormError(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleViewTicket = (ticketId: string) => {
+    router.push(`/student/support/${ticketId}`)
+  }
+
+  const handleRefresh = () => {
+    fetchTickets()
+  }
+
+  const hasAssignedTutors = assignedTutors.length > 0
+
+  if (!authLoading && !user) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
+          <h2 className="text-2xl font-semibold text-slate-900 mb-2">Support Center</h2>
+          <p className="text-slate-600">We couldn't load your account details. Please sign in again to access support.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -193,12 +385,34 @@ export default function StudentSupportPage() {
               <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
               {stats.open} Open
             </span>
-            <Button className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Refresh
+            <Button
+              className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm gap-2"
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Refreshing' : 'Refresh'}
             </Button>
           </div>
         </div>
+
+        {notification && (
+          <div
+            className={`mb-6 rounded-xl border px-4 py-3 ${
+              notification.type === 'success'
+                ? 'bg-green-50 border-green-200 text-green-700'
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}
+          >
+            {notification.message}
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+            {error}
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -288,7 +502,10 @@ export default function StudentSupportPage() {
           </div>
 
           <div
-            onClick={() => setActiveTab('submit')}
+            onClick={() => {
+              setNotification(null)
+              setActiveTab('submit')
+            }}
             className={`bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border group cursor-pointer ${
               activeTab === 'submit' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100'
             }`}
@@ -314,6 +531,7 @@ export default function StudentSupportPage() {
                 key={doubtType.id}
                 onClick={() => {
                   setNewTicket(prev => ({ ...prev, doubtType: doubtType.id }))
+                  setNotification(null)
                   setActiveTab('submit')
                 }}
                 className="bg-white rounded-xl p-3 border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200 cursor-pointer group"
@@ -337,44 +555,65 @@ export default function StudentSupportPage() {
             <div className="flex items-center gap-4">
               <select
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value as any)}
+                onChange={(e) => setSelectedStatus(e.target.value as FilterStatus)}
                 className="px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               >
                 <option value="all">All Status</option>
                 <option value="open">Open</option>
+                <option value="waiting_for_response">Waiting for Response</option>
                 <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
                 <option value="closed">Closed</option>
               </select>
-              <Button onClick={() => setActiveTab('submit')} className="bg-indigo-700 hover:bg-indigo-700 text-white gap-2">
+              <Button
+                onClick={() => {
+                  setNotification(null)
+                  setActiveTab('submit')
+                }}
+                className="bg-indigo-700 hover:bg-indigo-700 text-white gap-2"
+              >
                 <Plus className="w-4 h-4" />
                 New Ticket
               </Button>
             </div>
           </div>
 
-          {filteredTickets.length > 0 ? (
+          {isLoading && tickets.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 text-center py-12">
+              <RefreshCw className="w-10 h-10 text-slate-400 mx-auto mb-4 animate-spin" />
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">Loading your tickets</h3>
+              <p className="text-slate-600">Fetching the latest updates from your support history.</p>
+            </div>
+          ) : filteredTickets.length > 0 ? (
             <div className="space-y-4">
               {filteredTickets.map((ticket) => (
                 <div key={ticket.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-slate-900">{ticket.subject}</h3>
+                        <h3 className="font-semibold text-slate-900">{ticket.title}</h3>
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
                           {getStatusIcon(ticket.status)}
-                          <span className="ml-1">{ticket.status.replace('_', ' ').toUpperCase()}</span>
+                          <span className="ml-1">{formatStatusLabel(ticket.status)}</span>
                         </span>
                       </div>
-                      <p className="text-slate-600 text-sm mb-3">{ticket.message}</p>
+                      <p className="text-slate-600 text-sm mb-3">{ticket.description}</p>
                       <div className="flex items-center gap-4 text-xs text-slate-500">
-                        <span>Created: {ticket.createdAt.toLocaleDateString()}</span>
+                        <span>Created: {formatDate(ticket.createdAt)}</span>
                         <span>Priority: {ticket.priority}</span>
-                        {ticket.assignedTo && <span>Assigned to: {ticket.assignedTo}</span>}
+                        <span>
+                          Assigned to:{' '}
+                          {ticket.assignedTutor?.name || ticket.assignedTutor?.email || 'Pending assignment'}
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => handleViewTicket(ticket.id)}
+                      >
                         <Eye className="w-4 h-4" />
                         View
                       </Button>
@@ -392,11 +631,16 @@ export default function StudentSupportPage() {
               <h3 className="text-xl font-semibold text-slate-900 mb-2">No tickets found</h3>
               <p className="text-slate-600 mb-6">
                 {selectedStatus !== 'all'
-                  ? `No tickets with status "${selectedStatus}"`
-                  : 'You haven\'t submitted any support tickets yet'
-                }
+                  ? `No tickets with status "${formatStatusLabel(selectedStatus as TicketStatus)}"`
+                  : "You haven't submitted any support tickets yet"}
               </p>
-              <Button onClick={() => setActiveTab('submit')} className="bg-indigo-700 hover:bg-indigo-700 text-white gap-2">
+              <Button
+                onClick={() => {
+                  setNotification(null)
+                  setActiveTab('submit')
+                }}
+                className="bg-indigo-700 hover:bg-indigo-700 text-white gap-2"
+              >
                 <Plus className="w-4 h-4" />
                 Create Your First Ticket
               </Button>
@@ -410,6 +654,18 @@ export default function StudentSupportPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-6">Submit Support Ticket</h2>
 
+            {!hasAssignedTutors && (
+              <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+                You currently do not have an assigned tutor. Please contact the admin team so we can route your ticket correctly.
+              </div>
+            )}
+
+            {formError && (
+              <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                {formError}
+              </div>
+            )}
+
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -419,10 +675,13 @@ export default function StudentSupportPage() {
                   value={newTicket.tutorId}
                   onChange={(e) => setNewTicket(prev => ({ ...prev, tutorId: e.target.value }))}
                   className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  disabled={!hasAssignedTutors}
                 >
                   <option value="">Choose your tutor...</option>
-                  {mockTutorInfo.map(tutor => (
-                    <option key={tutor.id} value={tutor.id}>{tutor.name}</option>
+                  {assignedTutors.map(tutor => (
+                    <option key={tutor.id} value={tutor.id}>
+                      {tutor.name || tutor.email || 'Tutor'}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -464,7 +723,7 @@ export default function StudentSupportPage() {
                 </label>
                 <select
                   value={newTicket.priority}
-                  onChange={(e) => setNewTicket(prev => ({ ...prev, priority: e.target.value as any }))}
+                  onChange={(e) => setNewTicket(prev => ({ ...prev, priority: e.target.value as NewTicketState['priority'] }))}
                   className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 >
                   <option value="low">Low - General question</option>
@@ -510,7 +769,7 @@ export default function StudentSupportPage() {
                 {newTicket.attachments.length > 0 && (
                   <div className="mt-4 space-y-2">
                     {newTicket.attachments.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                      <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-slate-500" />
                           <span className="text-sm text-slate-700">{file.name}</span>
@@ -519,6 +778,7 @@ export default function StudentSupportPage() {
                         <button
                           onClick={() => removeAttachment(index)}
                           className="text-red-500 hover:text-red-700"
+                          type="button"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -575,9 +835,11 @@ export default function StudentSupportPage() {
                 <Button
                   onClick={handleSubmitTicket}
                   className="bg-indigo-700 hover:bg-indigo-700 text-white gap-2"
+                  disabled={isSubmitting || !hasAssignedTutors}
                 >
+                  {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   <Send className="w-4 h-4" />
-                  Submit Ticket
+                  {isSubmitting ? 'Submitting...' : 'Submit Ticket'}
                 </Button>
                 <Button variant="outline" onClick={() => setActiveTab('my-tickets')}>
                   Cancel

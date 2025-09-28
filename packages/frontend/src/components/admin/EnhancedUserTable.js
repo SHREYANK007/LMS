@@ -9,11 +9,7 @@ export default function EnhancedUserTable({ users, onResetPassword, onDeleteUser
   const getCourseTypeLabel = (courseType) => {
     const courseTypes = {
       'PTE': 'PTE Academic',
-      'IELTS': 'IELTS',
-      'TOEFL': 'TOEFL',
-      'GENERAL_ENGLISH': 'General English',
-      'BUSINESS_ENGLISH': 'Business English',
-      'ACADEMIC_WRITING': 'Academic Writing'
+      'IELTS': 'IELTS'
     };
     return courseTypes[courseType] || courseType || 'N/A';
   };

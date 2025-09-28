@@ -8,16 +8,31 @@ export default function StudentSidebar() {
   const pathname = usePathname();
   const { logout, user } = useAuth();
 
-  const menuItems = [
-    { href: '/student', label: 'Dashboard', icon: '📊' },
-    { href: '/student/calendar', label: 'Calendar', icon: '📅' },
-    { href: '/student/materials', label: 'Materials', icon: '📚' },
-    { href: '/student/progress', label: 'Progress', icon: '📈' },
-    { href: '/student/one-to-one', label: 'One-to-One', icon: '👥' },
-    { href: '/student/smart-quad', label: 'Smart Quad', icon: '🎯' },
-    { href: '/student/masterclass', label: 'Masterclass', icon: '🎓' },
-    { href: '/student/profile', label: 'Profile', icon: '👤' },
+  // Define all menu items with their feature keys
+  const allMenuItems = [
+    { href: '/student', label: 'Dashboard', icon: '📊', alwaysShow: true },
+    { href: '/student/calendar', label: 'Calendar', icon: '📅', featureKey: 'calendar' },
+    { href: '/student/smart-quad', label: 'Available Sessions', icon: '🎯', featureKey: 'smart_quad' },
+    { href: '/student/materials', label: 'Materials', icon: '📚', featureKey: 'materials' },
+    { href: '/student/progress', label: 'Progress', icon: '📈', featureKey: 'progress_tracking' },
+    { href: '/student/one-to-one', label: 'One-to-One', icon: '👥', featureKey: 'one_to_one' },
+    { href: '/student/masterclass', label: 'Masterclass', icon: '🎓', featureKey: 'masterclass' },
+    { href: '/student/reviews', label: 'Reviews', icon: '⭐', alwaysShow: true },
+    { href: '/student/support', label: 'Support', icon: '🎧', alwaysShow: true },
+    { href: '/student/profile', label: 'Profile', icon: '👤', alwaysShow: true },
   ];
+
+  // Filter menu items based on enabled features
+  const menuItems = allMenuItems.filter(item => {
+    // Always show items marked as alwaysShow
+    if (item.alwaysShow) return true;
+
+    // If no feature key, show by default
+    if (!item.featureKey) return true;
+
+    // Check if the feature is enabled for the user
+    return user?.enabledFeatures?.includes(item.featureKey);
+  });
 
   return (
     <div className="w-64 bg-green-900 text-white h-screen">

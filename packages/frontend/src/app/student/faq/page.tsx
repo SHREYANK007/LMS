@@ -271,7 +271,7 @@ export default function StudentHelpPage() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             >
-              <option value="all">All Categories</option>
+              <option key="all" value="all">All Categories</option>
               {faqCategories.map(category => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}

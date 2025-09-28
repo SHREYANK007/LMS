@@ -39,6 +39,7 @@ import {
   mockIntegrationServices,
   integrationConfig
 } from '@/data/mock/mockIntegrations'
+import FeatureProtected from '@/components/student/FeatureProtected'
 
 export default function StudentCalendarPage() {
   const [activeTab, setActiveTab] = useState<'calendar' | 'events' | 'integrations' | 'settings'>('calendar')
@@ -115,7 +116,8 @@ export default function StudentCalendarPage() {
   }
 
   return (
-    <div className="h-screen overflow-y-auto scrollbar-premium bg-gray-25">
+    <FeatureProtected featureKey="calendar" featureName="Calendar">
+      <div className="h-screen overflow-y-auto scrollbar-premium bg-gray-25">
       <div className="p-6">
         {/* Header */}
         <div className="mb-8">
@@ -670,6 +672,7 @@ export default function StudentCalendarPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </FeatureProtected>
   )
 }

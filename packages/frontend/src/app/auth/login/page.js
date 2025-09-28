@@ -1,21 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@lms.com');
+  const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     console.log('Login page mounted');
     console.log('API URL:', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
-  }, []);
+
+    // Check for account deactivation error parameter
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'account_deactivated') {
+      setError('Your account has been deactivated by an administrator. Please contact support for assistance.');
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -52,25 +59,17 @@ export default function LoginPage() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
 
-        // Redirect based on role
-        switch (data.user.role) {
-          case 'ADMIN':
-            console.log('Redirecting to /admin');
-            router.push('/admin');
-            break;
-          case 'TUTOR':
-            console.log('Redirecting to /tutor');
-            router.push('/tutor');
-            break;
-          case 'STUDENT':
-            console.log('Redirecting to /student');
-            router.push('/student');
-            break;
-          default:
-            router.push('/');
-        }
+        // Force page reload to refresh auth state
+        window.location.href = data.user.role === 'ADMIN' ? '/admin' :
+                              data.user.role === 'TUTOR' ? '/tutor' :
+                              data.user.role === 'STUDENT' ? '/student' : '/';
       } else {
-        setError(data.error || 'Invalid credentials. Please check your email and password.');
+        // Handle specific error codes
+        if (data.code === 'ACCOUNT_DEACTIVATED') {
+          setError('Your account has been deactivated by an administrator. Please contact support for assistance.');
+        } else {
+          setError(data.error || 'Invalid credentials. Please check your email and password.');
+        }
         setLoading(false);
       }
     } catch (err) {

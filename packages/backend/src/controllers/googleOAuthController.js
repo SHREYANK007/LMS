@@ -58,16 +58,85 @@ const handleOAuthCallback = async (req, res) => {
       googleEmail: userProfile.email
     });
 
-    // Redirect to frontend success page
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/tutor/calendar-connected?success=true`);
+    // Redirect to frontend success page based on user role
+    const redirectPath = user.role === 'TUTOR' ? '/tutor/calendar-connected' : '/student';
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}${redirectPath}?calendarConnected=true`);
   } catch (error) {
     console.error('Error handling OAuth callback:', error);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/tutor/calendar-connected?error=true`);
+    const redirectPath = state ? '/tutor/calendar-connected' : '/student'; // fallback
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}${redirectPath}?calendarError=true`);
   }
 };
 
 /**
- * Check calendar connection status
+ * Check calendar connection statusapi.js:50 Failed to parse JSON response: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+overrideMethod @ hook.js:608
+window.console.error @ app-index.js:33
+console.error @ hydration-error-info.js:63
+request @ api.js:50
+await in request
+fetchUserProfile @ api.js:99
+loadUser @ AuthContext.js:26
+eval @ AuthContext.js:48
+commitHookEffectListMount @ react-dom.development.js:21102
+invokePassiveEffectMountInDEV @ react-dom.development.js:23980
+invokeEffectsInDev @ react-dom.development.js:26852
+legacyCommitDoubleInvokeEffectsInDEV @ react-dom.development.js:26835
+commitDoubleInvokeEffectsInDEV @ react-dom.development.js:26816
+flushPassiveEffectsImpl @ react-dom.development.js:26514
+flushPassiveEffects @ react-dom.development.js:26438
+eval @ react-dom.development.js:26172
+workLoop @ scheduler.development.js:256
+flushWork @ scheduler.development.js:225
+performWorkUntilDeadline @ scheduler.development.js:534Understand this error
+api.js:54 📦 API Response Data: {error: 'Invalid JSON response from server'}
+api.js:69 ❌ API request error: Invalid JSON response from server
+overrideMethod @ hook.js:608
+window.console.error @ app-index.js:33
+console.error @ hydration-error-info.js:63
+request @ api.js:69
+await in request
+fetchUserProfile @ api.js:99
+loadUser @ AuthContext.js:26
+eval @ AuthContext.js:48
+commitHookEffectListMount @ react-dom.development.js:21102
+invokePassiveEffectMountInDEV @ react-dom.development.js:23980
+invokeEffectsInDev @ react-dom.development.js:26852
+legacyCommitDoubleInvokeEffectsInDEV @ react-dom.development.js:26835
+commitDoubleInvokeEffectsInDEV @ react-dom.development.js:26816
+flushPassiveEffectsImpl @ react-dom.development.js:26514
+flushPassiveEffects @ react-dom.development.js:26438
+eval @ react-dom.development.js:26172
+workLoop @ scheduler.development.js:256
+flushWork @ scheduler.development.js:225
+performWorkUntilDeadline @ scheduler.development.js:534Understand this error
+api.js:70 Full error: Error: Invalid JSON response from server
+    at ApiClient.request (api.js:64:15)
+    at async ApiClient.fetchUserProfile (api.js:99:22)
+    at async loadUser (AuthContext.js:26:30)
+overrideMethod @ hook.js:608
+window.console.error @ app-index.js:33
+console.error @ hydration-error-info.js:63
+request @ api.js:70
+await in request
+fetchUserProfile @ api.js:99
+loadUser @ AuthContext.js:26
+eval @ AuthContext.js:48
+commitHookEffectListMount @ react-dom.development.js:21102
+invokePassiveEffectMountInDEV @ react-dom.development.js:23980
+invokeEffectsInDev @ react-dom.development.js:26852
+legacyCommitDoubleInvokeEffectsInDEV @ react-dom.development.js:26835
+commitDoubleInvokeEffectsInDEV @ react-dom.development.js:26816
+flushPassiveEffectsImpl @ react-dom.development.js:26514
+flushPassiveEffects @ react-dom.development.js:26438
+eval @ react-dom.development.js:26172
+workLoop @ scheduler.development.js:256
+flushWork @ scheduler.development.js:225
+performWorkUntilDeadline @ scheduler.development.js:534Understand this error
+AuthContext.js:32 Failed to fetch user profile: Error: Invalid JSON response from server
+    at ApiClient.request (api.js:64:15)
+    at async ApiClient.fetchUserProfile (api.js:99:22)
+    at async loadUser (AuthContext.js:26:30)
  */
 const getConnectionStatus = async (req, res) => {
   try {

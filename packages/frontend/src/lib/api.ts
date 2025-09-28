@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
 
 interface CreateSessionData {
   title: string
@@ -21,7 +21,7 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
     const config: RequestInit = {
       headers: {
@@ -33,10 +33,13 @@ class ApiClient {
     }
 
     try {
+      console.log(`API Request: ${config.method || 'GET'} ${API_BASE_URL}${endpoint}`)
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        console.error(`API Error: ${response.status}`, errorData)
         return {
           success: false,
           error: errorData.error || `HTTP Error: ${response.status}`,
@@ -44,11 +47,13 @@ class ApiClient {
       }
 
       const data = await response.json()
+      console.log(`API Response:`, data)
       return {
         success: true,
         data: data.session || data.sessions || data,
       }
     } catch (error) {
+      console.error('API Network Error:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
@@ -99,7 +104,22 @@ class ApiClient {
       method: 'DELETE',
     })
   }
+
+  // Google Calendar endpoints
+  async getCalendarConnectionStatus() {
+    return this.request('/auth/google/status', {
+      method: 'GET',
+    })
+  }
+
+  async connectGoogleCalendar() {
+    return this.request('/auth/google/connect', {
+      method: 'GET',
+    })
+  }
 }
 
-export const apiClient = new ApiClient()
+const apiClientInstance = new ApiClient()
+export const apiClient = apiClientInstance
+export default apiClientInstance
 export type { CreateSessionData, ApiResponse }

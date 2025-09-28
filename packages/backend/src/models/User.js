@@ -29,7 +29,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     courseType: {
-      type: DataTypes.ENUM('PTE', 'IELTS', 'TOEFL', 'GENERAL_ENGLISH', 'BUSINESS_ENGLISH', 'ACADEMIC_WRITING'),
+      type: DataTypes.ENUM('PTE', 'NAATI'),
       allowNull: true,
       field: 'course_type'
     },
@@ -83,6 +83,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true,
       field: 'google_email'
+    },
+    averageRating: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      defaultValue: null,
+      field: 'average_rating'
     }
   }, {
     tableName: 'users',
@@ -100,6 +106,34 @@ module.exports = (sequelize, DataTypes) => {
     User.hasMany(models.Session, {
       foreignKey: 'tutorId',
       as: 'tutorSessions'
+    });
+
+    // Student features association
+    User.belongsToMany(models.Feature, {
+      through: models.StudentFeature,
+      foreignKey: 'student_id',
+      otherKey: 'feature_id',
+      as: 'features'
+    });
+
+    User.hasMany(models.StudentFeature, {
+      foreignKey: 'student_id',
+      as: 'studentFeatures'
+    });
+
+    // Tutor-Student associations
+    User.belongsToMany(models.User, {
+      through: models.TutorStudent,
+      as: 'students',
+      foreignKey: 'tutor_id',
+      otherKey: 'student_id'
+    });
+
+    User.belongsToMany(models.User, {
+      through: models.TutorStudent,
+      as: 'tutors',
+      foreignKey: 'student_id',
+      otherKey: 'tutor_id'
     });
   };
 

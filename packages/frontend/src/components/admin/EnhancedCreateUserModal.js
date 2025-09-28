@@ -4,11 +4,7 @@ import { useState } from 'react';
 
 const COURSE_TYPES = [
   { value: 'PTE', label: 'PTE Academic' },
-  { value: 'IELTS', label: 'IELTS' },
-  { value: 'TOEFL', label: 'TOEFL' },
-  { value: 'GENERAL_ENGLISH', label: 'General English' },
-  { value: 'BUSINESS_ENGLISH', label: 'Business English' },
-  { value: 'ACADEMIC_WRITING', label: 'Academic Writing' }
+  { value: 'IELTS', label: 'IELTS' }
 ];
 
 export default function EnhancedCreateUserModal({ onClose, onUserCreated, defaultRole = 'STUDENT' }) {
@@ -26,10 +22,44 @@ export default function EnhancedCreateUserModal({ onClose, onUserCreated, defaul
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  const [createdUser, setCreatedUser] = useState(null);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (error) setError(''); // Clear error when user starts typing
+  };
+
+  const downloadAccountDetails = async (userId, password) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${apiUrl}/admin/users/${userId}/account-details`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') ||
+                     `account_details_${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Failed to download account details file');
+      }
+    } catch (err) {
+      console.error('Error downloading account details file:', err);
+    }
   };
 
   const validateStep = (stepNumber) => {
@@ -110,6 +140,20 @@ export default function EnhancedCreateUserModal({ onClose, onUserCreated, defaul
       const data = await response.json();
 
       if (response.ok) {
+        const password = data.credentials?.password || formData.password;
+        const userId = data.user?.id;
+
+        // Store created user info for success message
+        setCreatedUser({
+          ...data.user,
+          password: password
+        });
+
+        // Automatically download account details file if we have the password
+        if (password && userId) {
+          await downloadAccountDetails(userId, password);
+        }
+
         onUserCreated(data);
       } else {
         setError(data.error || 'Failed to create user');

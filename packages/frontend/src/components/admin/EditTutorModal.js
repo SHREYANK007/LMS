@@ -1,0 +1,251 @@
+'use client'
+
+import { useState } from 'react'
+import { X, User, Mail, Phone, Calendar, UserCheck, Loader2, GraduationCap } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+const COURSE_TYPES = [
+  { value: 'PTE', label: 'PTE Academic' },
+  { value: 'IELTS', label: 'IELTS' }
+]
+
+export default function EditTutorModal({ tutor, onClose, onTutorUpdated }) {
+  const [formData, setFormData] = useState({
+    name: tutor.name || '',
+    email: tutor.email || '',
+    courseType: tutor.courseType || '',
+    phone: tutor.phone || '',
+    dateOfBirth: tutor.dateOfBirth || '',
+    emergencyContact: tutor.emergencyContact || '',
+    isActive: tutor.isActive !== undefined ? tutor.isActive : true
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    if (error) setError('')
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!formData.name.trim()) {
+      setError('Name is required')
+      return
+    }
+
+    if (!formData.email.trim()) {
+      setError('Email is required')
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError('Invalid email format')
+      return
+    }
+
+    setError('')
+    setLoading(true)
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      const token = localStorage.getItem('token')
+
+      const response = await fetch(`${apiUrl}/admin/tutors/${tutor.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          courseType: formData.courseType,
+          phone: formData.phone.trim() || null,
+          dateOfBirth: formData.dateOfBirth || null,
+          emergencyContact: formData.emergencyContact.trim() || null,
+          isActive: formData.isActive
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        onTutorUpdated(data.tutor)
+      } else {
+        setError(data.error || 'Failed to update tutor')
+      }
+    } catch (err) {
+      setError('Failed to update tutor')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Edit Tutor</h2>
+            <p className="text-sm text-gray-500 mt-1">Update tutor information</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            disabled={loading}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form Content */}
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <User className="w-4 h-4 inline mr-1" />
+                Full Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Enter full name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Mail className="w-4 h-4 inline mr-1" />
+                Email Address *
+              </label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="tutor@example.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <GraduationCap className="w-4 h-4 inline mr-1" />
+                Course Specialization
+              </label>
+              <select
+                value={formData.courseType}
+                onChange={(e) => handleInputChange('courseType', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select specialization</option>
+                {COURSE_TYPES.map(course => (
+                  <option key={course.value} value={course.value}>
+                    {course.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Phone className="w-4 h-4 inline mr-1" />
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Date of Birth
+              </label>
+              <input
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Emergency Contact
+              </label>
+              <input
+                type="text"
+                value={formData.emergencyContact}
+                onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Emergency contact name and phone"
+              />
+            </div>
+
+            <div className="bg-gray-50 p-3 rounded-md">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.isActive}
+                  onChange={(e) => handleInputChange('isActive', e.target.checked)}
+                  className="mr-2"
+                />
+                <UserCheck className="w-4 h-4 mr-1" />
+                <span className="text-sm text-gray-700">Active Tutor</span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1">
+                Inactive tutors cannot access the system
+              </p>
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-50 text-red-800 rounded border border-red-200 flex items-center">
+                <div className="w-4 h-4 text-red-600 mr-2">⚠</div>
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* Footer Buttons */}
+          <div className="flex justify-between p-6 border-t bg-gray-50">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-indigo-500 hover:bg-indigo-600"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Tutor'
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

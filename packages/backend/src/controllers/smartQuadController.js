@@ -222,6 +222,11 @@ const getAvailableSmartQuadSessions = asyncHandler(async (req, res) => {
       whereClause.courseType = courseType;
     }
 
+    // Filter by assigned tutors for students
+    if (req.user.role === 'STUDENT' && req.assignedTutorIds) {
+      whereClause.tutorId = { [require('sequelize').Op.in]: req.assignedTutorIds };
+    }
+
     const sessions = await Session.findAll({
       where: whereClause,
       include: [{

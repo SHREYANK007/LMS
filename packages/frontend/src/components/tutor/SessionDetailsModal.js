@@ -6,7 +6,9 @@ export default function SessionDetailsModal({ session, onClose, onUpdate, onDele
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     title: session.title,
-    description: session.description
+    description: session.description,
+    startTime: session.startTime.slice(0, 16), // Format for datetime-local input
+    endTime: session.endTime.slice(0, 16)
   });
   const [loading, setLoading] = useState(false);
 
@@ -73,7 +75,11 @@ export default function SessionDetailsModal({ session, onClose, onUpdate, onDele
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify({
+          ...editForm,
+          startTime: new Date(editForm.startTime).toISOString(),
+          endTime: new Date(editForm.endTime).toISOString()
+        })
       });
 
       if (response.ok) {
@@ -127,7 +133,9 @@ export default function SessionDetailsModal({ session, onClose, onUpdate, onDele
   const handleCancel = () => {
     setEditForm({
       title: session.title,
-      description: session.description
+      description: session.description,
+      startTime: session.startTime.slice(0, 16),
+      endTime: session.endTime.slice(0, 16)
     });
     setIsEditing(false);
   };
@@ -184,11 +192,30 @@ export default function SessionDetailsModal({ session, onClose, onUpdate, onDele
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
-              <p className="text-gray-900">{formatDateTime(session.startTime)}</p>
+              {isEditing ? (
+                <input
+                  type="datetime-local"
+                  value={editForm.startTime}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, startTime: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              ) : (
+                <p className="text-gray-900">{formatDateTime(session.startTime)}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
-              <p className="text-gray-900">{formatDateTime(session.endTime)}</p>
+              {isEditing ? (
+                <input
+                  type="datetime-local"
+                  value={editForm.endTime}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, endTime: e.target.value }))}
+                  min={editForm.startTime}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              ) : (
+                <p className="text-gray-900">{formatDateTime(session.endTime)}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>

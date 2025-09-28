@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npx sequelize:*)",
+      "Bash(npx sequelize db:seed:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(npx sequelize-cli:*)",
+      "Bash(node:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c:*)",
+      "Bash(xargs ls:*)",
+      "Bash(npm test)",
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(npm start)",
+      "Bash(tasklist)",
+      "Bash(curl -X GET http://localhost:5001/materials -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRkN2Y0NTllLWIyYTEtNDdjZC1hNmVlLTIyMzE0MWU2NmIzNSIsImVtYWlsIjoiYWRtaW5AZ21haWwuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzM1MzI5NjI1LCJleHAiOjE3MzU0MTYwMjV9.pJwyBq9PaEZ0G1F8T_1DRVPG9e-eDOGD0BlM7SYyuvM\")",
+      "Bash(curl -X GET http://localhost:5001/sessions?upcoming=true -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRkN2Y0NTllLWIyYTEtNDdjZC1hNmVlLTIyMzE0MWU2NmIzNSIsImVtYWlsIjoiYWRtaW5AZ21haWwuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzM1MzI5NjI1LCJleHAiOjE3MzU0MTYwMjV9.pJwyBq9PaEZ0G1F8T_1DRVPG9e-eDOGD0BlM7SYyuvM\")",
+      "Bash(PORT=5002 npm run dev)",
+      "Bash(curl:*)",
+      "Bash(rs)",
+      "Bash(PORT=5003 npm run dev)",
+      "Bash(PORT=5000 npm run dev)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

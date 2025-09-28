@@ -2,16 +2,25 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { sequelize } = require('./models');
-const { bootstrapAdmin } = require('./utils/bootstrap');
+const { bootstrapAdmin, bootstrapFeatures } = require('./utils/bootstrap');
 
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const sessionRoutes = require('./routes/sessions');
 const smartQuadRoutes = require('./routes/smartQuad');
 const googleOAuthRoutes = require('./routes/googleOAuth');
+const studentRoutes = require('./routes/students');
+const tutorRoutes = require('./routes/tutors');
+const tutorAppRoutes = require('./routes/tutor');
+const userRoutes = require('./routes/user');
+const sessionRequestRoutes = require('./routes/sessionRequests');
+const materialsRoutes = require('./routes/materials');
+const reviewRoutes = require('./routes/reviews');
+const announcementRoutes = require('./routes/announcements');
+const supportTicketRoutes = require('./routes/supportTickets');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 app.use(cors());
 app.use(express.json());
@@ -34,7 +43,8 @@ app.get('/', (req, res) => {
       health: '/health',
       auth: '/auth',
       admin: '/admin',
-      sessions: '/sessions'
+      sessions: '/sessions',
+      supportTickets: '/support-tickets'
     }
   });
 });
@@ -45,9 +55,18 @@ app.get('/health', (req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
+app.use('/admin/students', studentRoutes);
+app.use('/admin/tutors', tutorRoutes);
+app.use('/tutor', tutorAppRoutes);
 app.use('/sessions', sessionRoutes);
 app.use('/smart-quad', smartQuadRoutes);
 app.use('/auth/google', googleOAuthRoutes);
+app.use('/api', userRoutes);
+app.use('/session-requests', sessionRequestRoutes);
+app.use('/materials', materialsRoutes);
+app.use('/reviews', reviewRoutes);
+app.use('/announcements', announcementRoutes);
+app.use('/support-tickets', supportTicketRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -61,10 +80,11 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log('✓ Database connection established');
 
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ force: false });
     console.log('✓ Database models synchronized');
 
     await bootstrapAdmin();
+    await bootstrapFeatures();
 
     app.listen(PORT, () => {
       console.log(`\n🚀 Server is running on http://localhost:${PORT}`);

@@ -9,9 +9,9 @@ const {
 } = require('../controllers/googleOAuthController');
 
 // Routes for Google Calendar OAuth
-router.get('/connect', authenticate, authorize('TUTOR'), initiateOAuth);
+router.get('/connect', authenticate, authorize('TUTOR', 'STUDENT'), initiateOAuth);
 router.get('/callback', handleOAuthCallback); // No auth needed for OAuth callback
-router.get('/status', authenticate, authorize('TUTOR'), getConnectionStatus);
-router.post('/disconnect', authenticate, authorize('TUTOR'), disconnectCalendar);
+router.get('/status', authenticate, authorize('TUTOR', 'STUDENT'), getConnectionStatus);
+router.post('/disconnect', authenticate, authorize('TUTOR', 'STUDENT'), disconnectCalendar);
 
 module.exports = router;

@@ -47,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 'ONE_TO_ONE'
     },
     courseType: {
-      type: DataTypes.ENUM('PTE', 'IELTS', 'TOEFL', 'GENERAL_ENGLISH', 'BUSINESS_ENGLISH', 'ACADEMIC_WRITING'),
+      type: DataTypes.ENUM('PTE', 'IELTS'),
       allowNull: true
     },
     maxParticipants: {

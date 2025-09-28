@@ -222,19 +222,19 @@ export const mockEmailTemplates: EmailTemplate[] = [
     name: 'Welcome Email',
     subject: 'Welcome to ScoreSmart LMS - Your Learning Journey Begins!',
     htmlContent: `
-      <h2>Welcome {{studentName}}!</h2>
-      <p>We're excited to have you join ScoreSmart LMS for your {{courseType}} preparation.</p>
+      <h2>Welcome \{\{studentName\}\}!</h2>
+      <p>We're excited to have you join ScoreSmart LMS for your \{\{courseType\}\} preparation.</p>
       <p>Your account has been activated and you can now access:</p>
       <ul>
         <li>Study materials</li>
         <li>Session booking</li>
         <li>Progress tracking</li>
       </ul>
-      <a href="{{loginUrl}}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">
+      <a href="\{\{loginUrl\}\}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">
         Get Started
       </a>
     `,
-    textContent: 'Welcome {{studentName}}! Your ScoreSmart LMS account for {{courseType}} preparation is ready. Access your dashboard at {{loginUrl}}',
+    textContent: 'Welcome \{\{studentName\}\}! Your ScoreSmart LMS account for \{\{courseType\}\} preparation is ready. Access your dashboard at \{\{loginUrl\}\}',
     type: 'welcome',
     variables: ['studentName', 'courseType', 'loginUrl'],
     isActive: true,
@@ -244,23 +244,23 @@ export const mockEmailTemplates: EmailTemplate[] = [
   {
     id: 'email_2',
     name: 'Session Reminder',
-    subject: 'Upcoming Session: {{sessionTitle}} in 24 hours',
+    subject: 'Upcoming Session: \{\{sessionTitle\}\} in 24 hours',
     htmlContent: `
       <h2>Session Reminder</h2>
-      <p>Hi {{studentName}},</p>
+      <p>Hi \{\{studentName\}\},</p>
       <p>This is a reminder that you have an upcoming session:</p>
       <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-        <h3>{{sessionTitle}}</h3>
-        <p><strong>Date:</strong> {{sessionDate}}</p>
-        <p><strong>Time:</strong> {{sessionTime}}</p>
-        <p><strong>Tutor:</strong> {{tutorName}}</p>
-        <p><strong>Type:</strong> {{sessionType}}</p>
+        <h3>\{\{sessionTitle\}\}</h3>
+        <p><strong>Date:</strong> \{\{sessionDate\}\}</p>
+        <p><strong>Time:</strong> \{\{sessionTime\}\}</p>
+        <p><strong>Tutor:</strong> \{\{tutorName\}\}</p>
+        <p><strong>Type:</strong> \{\{sessionType\}\}</p>
       </div>
-      <a href="{{joinUrl}}" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">
+      <a href="\{\{joinUrl\}\}" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">
         Join Session
       </a>
     `,
-    textContent: 'Session reminder: {{sessionTitle}} on {{sessionDate}} at {{sessionTime}} with {{tutorName}}. Join at {{joinUrl}}',
+    textContent: 'Session reminder: \{\{sessionTitle\}\} on \{\{sessionDate\}\} at \{\{sessionTime\}\} with \{\{tutorName\}\}. Join at \{\{joinUrl\}\}',
     type: 'reminder',
     variables: ['studentName', 'sessionTitle', 'sessionDate', 'sessionTime', 'tutorName', 'sessionType', 'joinUrl'],
     isActive: true,
@@ -270,21 +270,21 @@ export const mockEmailTemplates: EmailTemplate[] = [
   {
     id: 'email_3',
     name: 'Payment Confirmation',
-    subject: 'Payment Confirmation - {{transactionId}}',
+    subject: 'Payment Confirmation - \{\{transactionId\}\}',
     htmlContent: `
       <h2>Payment Confirmed</h2>
-      <p>Hi {{studentName}},</p>
+      <p>Hi \{\{studentName\}\},</p>
       <p>Your payment has been successfully processed.</p>
       <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
         <h3>Transaction Details</h3>
-        <p><strong>Amount:</strong> ${{amount}} {{currency}}</p>
-        <p><strong>Description:</strong> {{description}}</p>
-        <p><strong>Transaction ID:</strong> {{transactionId}}</p>
-        <p><strong>Date:</strong> {{transactionDate}}</p>
+        <p><strong>Amount:</strong> $\{\{amount\}\} \{\{currency\}\}</p>
+        <p><strong>Description:</strong> \{\{description\}\}</p>
+        <p><strong>Transaction ID:</strong> \{\{transactionId\}\}</p>
+        <p><strong>Date:</strong> \{\{transactionDate\}\}</p>
       </div>
       <p>You can view your payment history in your dashboard.</p>
     `,
-    textContent: 'Payment confirmed: ${{amount}} {{currency}} for {{description}}. Transaction ID: {{transactionId}}',
+    textContent: 'Payment confirmed: $\{\{amount\}\} \{\{currency\}\} for \{\{description\}\}. Transaction ID: \{\{transactionId\}\}',
     type: 'confirmation',
     variables: ['studentName', 'amount', 'currency', 'description', 'transactionId', 'transactionDate'],
     isActive: true,

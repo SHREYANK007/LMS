@@ -5,6 +5,9 @@ import { useState } from 'react';
 export default function SessionJoinModal({ session, onClose, onJoin }) {
   const [loading, setLoading] = useState(false);
 
+  // Debug session data
+  console.log('SessionJoinModal - session data:', session);
+
   const formatDateTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -81,10 +84,24 @@ export default function SessionJoinModal({ session, onClose, onJoin }) {
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Join Smart Quad Session</h2>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCourseTypeColor(session.courseType)}`}>
-                {session.courseType}
-              </span>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Join {session.sessionType === 'ONE_TO_ONE' ? 'One-to-One' :
+                      session.sessionType === 'SMART_QUAD' ? 'Smart Quad' :
+                      session.sessionType === 'MASTERCLASS' ? 'Masterclass' : 'Session'}
+              </h2>
+              <div className="flex gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  session.sessionType === 'ONE_TO_ONE' ? 'bg-blue-100 text-blue-800' :
+                  session.sessionType === 'SMART_QUAD' ? 'bg-green-100 text-green-800' :
+                  'bg-purple-100 text-purple-800'
+                }`}>
+                  {session.sessionType === 'ONE_TO_ONE' ? 'One-to-One' :
+                   session.sessionType === 'SMART_QUAD' ? 'Smart Quad' : 'Masterclass'}
+                </span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCourseTypeColor(session.courseType)}`}>
+                  {session.courseType}
+                </span>
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -113,7 +130,7 @@ export default function SessionJoinModal({ session, onClose, onJoin }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tutor</label>
-                <p className="text-gray-900 font-medium">{session.tutor.name}</p>
+                <p className="text-gray-900 font-medium">{session.tutor?.name || session.tutor?.email || 'Unknown Tutor'}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Capacity</label>
@@ -140,20 +157,27 @@ export default function SessionJoinModal({ session, onClose, onJoin }) {
             )}
 
             {/* Meeting Details */}
-            {session.meetLink && (
+            {session.meetLink ? (
               <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <h4 className="text-sm font-medium text-green-800 mb-2">Meeting Information</h4>
                 <p className="text-sm text-green-700 mb-3">
-                  A Google Meet link has been created for this session. You'll receive the link in your confirmation email after joining.
+                  A Google Meet link has been created for this session. You can join directly using the link below.
                 </p>
                 <a
                   href={session.meetLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center text-sm text-green-600 hover:text-green-700"
+                  className="inline-flex items-center px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
                 >
-                  📹 Preview Meet Link
+                  📹 Join Meet Link
                 </a>
+              </div>
+            ) : (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">Meeting Information</h4>
+                <p className="text-sm text-blue-700">
+                  Meeting details will be provided via email after you join the session. The tutor may use Google Meet, Zoom, or other platforms for the session.
+                </p>
               </div>
             )}
           </div>

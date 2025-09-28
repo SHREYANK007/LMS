@@ -1,4 +1,4 @@
-const { User } = require('../models');
+const { User, Feature } = require('../models');
 const { hashPassword, generateRandomPassword } = require('./auth');
 
 const bootstrapAdmin = async () => {
@@ -38,4 +38,55 @@ const bootstrapAdmin = async () => {
   }
 };
 
-module.exports = { bootstrapAdmin };
+const bootstrapFeatures = async () => {
+  try {
+    const featureCount = await Feature.count();
+
+    if (featureCount > 0) {
+      console.log('✓ Features already exist');
+      return;
+    }
+
+    const features = [
+      {
+        key: 'one_to_one',
+        label: 'One-to-One Sessions',
+        description: 'Access to personal tutoring sessions'
+      },
+      {
+        key: 'smart_quad',
+        label: 'Smart Quad',
+        description: 'Access to small group learning sessions'
+      },
+      {
+        key: 'masterclass',
+        label: 'Masterclass',
+        description: 'Access to expert workshop sessions'
+      },
+      {
+        key: 'materials',
+        label: 'Study Materials',
+        description: 'Access to study materials and resources'
+      },
+      {
+        key: 'progress_tracking',
+        label: 'Progress Tracking',
+        description: 'Access to progress tracking and analytics'
+      },
+      {
+        key: 'calendar',
+        label: 'Calendar',
+        description: 'Access to calendar and scheduling features'
+      }
+    ];
+
+    await Feature.bulkCreate(features);
+    console.log('✓ Default features created');
+
+  } catch (error) {
+    console.error('Error bootstrapping features:', error.message);
+    throw error;
+  }
+};
+
+module.exports = { bootstrapAdmin, bootstrapFeatures };

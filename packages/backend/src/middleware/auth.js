@@ -1,4 +1,5 @@
 const { verifyToken } = require('../utils/auth');
+const { User } = require('../models');
 
 const authenticate = async (req, res, next) => {
   try {
@@ -17,7 +18,33 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = verifyToken(token);
-    req.user = decoded;
+
+    // Check if user still exists and is active
+    const user = await User.findByPk(decoded.id, {
+      attributes: ['id', 'email', 'role', 'isActive', 'courseType']
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        error: 'Your account has been deactivated. Please contact an administrator.',
+        code: 'ACCOUNT_DEACTIVATED'
+      });
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      courseType: user.courseType
+    };
+
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -46,7 +73,17 @@ const authorize = (...roles) => {
   };
 };
 
+// Alias functions for compatibility
+const requireAuth = authenticate;
+const requireAdmin = authorize('ADMIN');
+const requireStudent = authorize('STUDENT');
+const requireTutor = authorize('TUTOR');
+
 module.exports = {
   authenticate,
-  authorize
+  authorize,
+  requireAuth,
+  requireAdmin,
+  requireStudent,
+  requireTutor
 };

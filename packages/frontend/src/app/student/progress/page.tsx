@@ -38,6 +38,7 @@ import {
   type StudySession
 } from '@/data/mock/mockAnalytics'
 import RealTimeDashboard from '@/components/RealTimeDashboard'
+import FeatureProtected from '@/components/student/FeatureProtected'
 
 export default function StudentProgressPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'goals' | 'analytics' | 'insights'>('overview')
@@ -109,7 +110,8 @@ export default function StudentProgressPage() {
   }
 
   return (
-    <div className="h-screen overflow-y-auto scrollbar-premium bg-gray-25">
+    <FeatureProtected featureKey="progress_tracking" featureName="Progress Tracking">
+      <div className="h-screen overflow-y-auto scrollbar-premium bg-gray-25">
       <div className="p-6">
         {/* Header */}
         <div className="mb-8">
@@ -330,18 +332,18 @@ export default function StudentProgressPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button className="h-16 gap-3 bg-blue-600 hover:bg-blue-700">
+                  <button className="h-16 inline-flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
                     <Calendar className="w-5 h-5" />
                     Book Next Session
-                  </Button>
-                  <Button variant="outline" className="h-16 gap-3">
+                  </button>
+                  <button className="h-16 inline-flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors">
                     <Download className="w-5 h-5" />
                     Download Report
-                  </Button>
-                  <Button variant="outline" className="h-16 gap-3">
+                  </button>
+                  <button className="h-16 inline-flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors">
                     <Target className="w-5 h-5" />
                     Set New Goal
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
@@ -629,6 +631,7 @@ export default function StudentProgressPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </FeatureProtected>
   )
 }
