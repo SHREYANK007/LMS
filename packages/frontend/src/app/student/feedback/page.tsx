@@ -199,12 +199,21 @@ export default function StudentSupportPage() {
     }
     return tickets.filter(ticket => ticket.status === selectedStatus)
   }, [tickets, selectedStatus])
+  const activeTickets = useMemo(
+    () => tickets.filter(ticket => ticket.status !== 'resolved' && ticket.status !== 'closed'),
+    [tickets]
+  )
+
+  const resolvedTickets = useMemo(
+    () => tickets.filter(ticket => ticket.status === 'resolved' || ticket.status === 'closed'),
+    [tickets]
+  )
 
   const stats = useMemo(() => {
     const total = tickets.length
     const open = tickets.filter(t => t.status === 'open' || t.status === 'waiting_for_response').length
     const inProgress = tickets.filter(t => t.status === 'in_progress').length
-    const resolved = tickets.filter(t => t.status === 'resolved').length
+    const resolved = tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length
 
     return {
       total,
@@ -248,6 +257,44 @@ export default function StudentSupportPage() {
     }
   }
 
+  const renderTicketCard = (ticket: SupportTicket) => (
+    <div key={ticket.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="font-semibold text-slate-900">{ticket.title}</h3>
+            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+              {getStatusIcon(ticket.status)}
+              <span className="ml-1">{formatStatusLabel(ticket.status)}</span>
+            </span>
+          </div>
+          <p className="text-slate-600 text-sm mb-3">{ticket.description}</p>
+          <div className="flex items-center gap-4 text-xs text-slate-500">
+            <span>Created: {formatDate(ticket.createdAt)}</span>
+            <span>Priority: {ticket.priority}</span>
+            <span>
+              Assigned to{' '}
+              {ticket.assignedTutor?.name || ticket.assignedTutor?.email || 'Pending assignment'}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => handleViewTicket(ticket.id)}
+          >
+            <Eye className="w-4 h-4" />
+            View
+          </Button>
+          <Button variant="ghost" size="sm">
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
     if (files.length === 0) {
@@ -584,46 +631,65 @@ export default function StudentSupportPage() {
               <h3 className="text-xl font-semibold text-slate-900 mb-2">Loading your tickets</h3>
               <p className="text-slate-600">Fetching the latest updates from your support history.</p>
             </div>
+          ) : selectedStatus === 'all' ? (
+            tickets.length > 0 ? (
+              <div className="space-y-8">
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-slate-800">Active Tickets</h3>
+                    <span className="text-sm text-slate-500">{activeTickets.length} ongoing</span>
+                  </div>
+                  {activeTickets.length > 0 ? (
+                    <div className="space-y-4">
+                      {activeTickets.map(renderTicketCard)}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 text-center py-10">
+                      <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                      <h4 className="text-lg font-semibold text-slate-900 mb-1">No active tickets</h4>
+                      <p className="text-slate-600 text-sm">All caught up! Reach out if you need help.</p>
+                    </div>
+                  )}
+                </section>
+
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-slate-800">Resolved Tickets</h3>
+                    <span className="text-sm text-slate-500">{resolvedTickets.length} completed</span>
+                  </div>
+                  {resolvedTickets.length > 0 ? (
+                    <div className="space-y-4">
+                      {resolvedTickets.map(renderTicketCard)}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 text-center py-10">
+                      <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
+                      <h4 className="text-lg font-semibold text-slate-900 mb-1">No resolved tickets yet</h4>
+                      <p className="text-slate-600 text-sm">Resolved tickets will appear here for your records.</p>
+                    </div>
+                  )}
+                </section>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 text-center py-12">
+                <MessageSquare className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">No tickets found</h3>
+                <p className="text-slate-600 mb-6">You haven't submitted any support tickets yet</p>
+                <Button
+                  onClick={() => {
+                    setNotification(null)
+                    setActiveTab('submit')
+                  }}
+                  className="bg-indigo-700 hover:bg-indigo-700 text-white gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Your First Ticket
+                </Button>
+              </div>
+            )
           ) : filteredTickets.length > 0 ? (
             <div className="space-y-4">
-              {filteredTickets.map((ticket) => (
-                <div key={ticket.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-slate-900">{ticket.title}</h3>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                          {getStatusIcon(ticket.status)}
-                          <span className="ml-1">{formatStatusLabel(ticket.status)}</span>
-                        </span>
-                      </div>
-                      <p className="text-slate-600 text-sm mb-3">{ticket.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-slate-500">
-                        <span>Created: {formatDate(ticket.createdAt)}</span>
-                        <span>Priority: {ticket.priority}</span>
-                        <span>
-                          Assigned to:{' '}
-                          {ticket.assignedTutor?.name || ticket.assignedTutor?.email || 'Pending assignment'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => handleViewTicket(ticket.id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {filteredTickets.map(renderTicketCard)}
             </div>
           ) : (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 text-center py-12">

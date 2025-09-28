@@ -18,7 +18,7 @@ export default function StudentSidebar() {
     { href: '/student/one-to-one', label: 'One-to-One', icon: '👥', featureKey: 'one_to_one' },
     { href: '/student/masterclass', label: 'Masterclass', icon: '🎓', featureKey: 'masterclass' },
     { href: '/student/reviews', label: 'Reviews', icon: '⭐', alwaysShow: true },
-    { href: '/student/support', label: 'Support', icon: '🎧', alwaysShow: true },
+    { href: '/student/feedback', label: 'Support', icon: '🎧', alwaysShow: true },
     { href: '/student/profile', label: 'Profile', icon: '👤', alwaysShow: true },
   ];
 
